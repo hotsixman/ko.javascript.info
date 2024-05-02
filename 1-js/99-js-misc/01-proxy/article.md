@@ -593,13 +593,13 @@ sayHi("John"); // Hello, John! (3초 후)
 
 ## Reflect
 
-`Reflect` is a built-in object that simplifies creation of `Proxy`.
+`Reflect`는 `proxy`의 생성을 간소화해주는 빌트인 객체입니다.
 
-It was said previously that internal methods, such as `[[Get]]`, `[[Set]]` and others are specification-only, they can't be called directly.
+`[[Get]]`이나 `[[Set]]`등의 내부 메서드는 명세서에만 정의 되어있기 때문에, 직접 호출할 수 없습니다.
 
-The `Reflect` object makes that somewhat possible. Its methods are minimal wrappers around the internal methods.
+`Reflect` 객체는 그것을 어느정도 가능하게 해줍니다. `Reflect` 객체의 메소드들은 내부 메소드들을 감싸는 아주 얇은 막입니다.
 
-Here are examples of operations and `Reflect` calls that do the same:
+다음은 몇 개의 작업들과 같은 일을 수행하는 `Reflect` 호출의 예시입니다:
 
 | Operation |  `Reflect` call | Internal method |
 |-----------------|----------------|-------------|
@@ -609,7 +609,7 @@ Here are examples of operations and `Reflect` calls that do the same:
 | `new F(value)` | `Reflect.construct(F, value)` | `[[Construct]]` |
 | ... | ... | ... |
 
-For example:
+예시:
 
 ```js run
 let user = {};
@@ -619,13 +619,13 @@ Reflect.set(user, 'name', 'John');
 alert(user.name); // John
 ```
 
-In particular, `Reflect` allows us to call operators (`new`, `delete`...) as functions (`Reflect.construct`, `Reflect.deleteProperty`, ...). That's an interesting capability, but here another thing is important.
+특히, `Reflect`는 연산자들을(`new`, `delete`...) 함수로 호출할 수 있게 해줍니다(`Reflect.construct`, `Reflect.deleteProperty`, ...). 흥미로운 기능이지만 여기 더 중요한 것이 있습니다.
 
-**For every internal method, trappable by `Proxy`, there's a corresponding method in `Reflect`, with the same name and arguments as the `Proxy` trap.**
+**`Proxy`로 가로챌 수 있는 모든 내부 메소드들에 대해, 각각에 대응하는 같은 이름의 메소드가 `Reflect`에도 존재합니다.**
 
-So we can use `Reflect` to forward an operation to the original object.
+따라서 `Reflect`를 사용하여 원본 객체에 작업을 전달할 수 있습니다.
 
-In this example, both traps `get` and `set` transparently (as if they didn't exist) forward reading/writing operations to the object, showing a message:
+다음 예시에서, `get`과 `set` 두 개의 트랩은 모두 투명하게(마치 존재하지 않는 것처럼) 읽기/쓰기 작업을 객체에 전달할 수 있습니다. 메시지를 띄우면서 말이죠:
 
 ```js run
 let user = {
@@ -647,26 +647,24 @@ user = new Proxy(user, {
   }
 });
 
-let name = user.name; // shows "GET name"
-user.name = "Pete"; // shows "SET name=Pete"
+let name = user.name; // "GET name"을 보여줍니다.
+user.name = "Pete"; // "SET name=Pete"을 보여줍니다.
 ```
 
-Here:
+- `Reflect.get`은 객체의 프로퍼티를 읽습니다
+- `Reflect.set`은 객체의 프로퍼티를 쓰고 성공하면 `true`를, 그렇지 않으면 `false`를 반환합니다.
 
-- `Reflect.get` reads an object property.
-- `Reflect.set` writes an object property and returns `true` if successful, `false` otherwise.
+이게 다 입니다, 모든 것이 간단하죠: 만약 트랩이 호출을 객체에 전달하고 싶다면, `Reflect.<method>`를 같은 인수로 호출하는 것만으로도 충분합니다.
 
-That is, everything's simple: if a trap wants to forward the call to the object, it's enough to call `Reflect.<method>` with the same arguments.
+대부분의 경우 `Reflect` 없이도 같은 작업을 할 수 있습니다, 예를 들어, 프로퍼티를 읽는 `Reflect.get(target, prop, receiver)`은 `target[prop]`로 대체할 수 있죠. 하지만 중요한 미묘한 차이가 있습니다.
 
-In most cases we can do the same without `Reflect`, for instance, reading a property `Reflect.get(target, prop, receiver)` can be replaced by `target[prop]`. There are important nuances though.
+### 획득자(getter) 대신하기기
 
-### Proxying a getter
+`Reflect.get`이 왜 더 나은지 보여주는 예시를 살펴봅시다. 보시다시피 `get/set` 메소드에는 세번째 인수인 `receiver`가 존재합니다. 우리는 아직 이걸 사용해보지 않았습니다.
 
-Let's see an example that demonstrates why `Reflect.get` is better. And we'll also see why `get/set` have the third argument `receiver`, that we didn't use before.
+`_name`과 그것에 대한 획득자(getter)가 존재하는 `user`라는 객체가 있습니다.
 
-We have an object `user` with `_name` property and a getter for it.
-
-Here's a proxy around it:
+그리고 이것을 감싸는 프락시가 있습니다:
 
 ```js run
 let user = {
@@ -687,11 +685,11 @@ let userProxy = new Proxy(user, {
 alert(userProxy.name); // Guest
 ```
 
-The `get` trap is "transparent" here, it returns the original property, and doesn't do anything else. That's enough for our example.
+여기서 `get` 트랩은 투명합니다. 원래 프로퍼티 값을 반환하죠. 그리고 아무것도 하지 않습니다. 이것으로 우리의 예시 충분합니다.
 
-Everything seems to be all right. But let's make the example a little bit more complex.
+모든 것이 잘 작동하는 것 같아 보입니다. 하지만 예시를 조금 더 복잡하게 만들어봅시다.
 
-After inheriting another object `admin` from `user`, we can observe the incorrect behavior:
+`user`로 부터 또다른 객체인 `admin`을 상속받은 후, 잘못된 작동을 확인할 수 있습니다:
 
 ```js run
 let user = {
@@ -713,32 +711,32 @@ let admin = {
   _name: "Admin"
 };
 
-// Expected: Admin
-alert(admin.name); // outputs: Guest (?!?)
+// 예상: Admin
+alert(admin.name); //출력: Guest (?!?)
 */!*
 ```
 
-Reading `admin.name` should return `"Admin"`, not `"Guest"`!
+`admin.name`을 읽으면 `"Guest"`가 아닌 `"Admin"`을 반환해야합니다>
 
-What's the matter? Maybe we did something wrong with the inheritance?
+뭐가 문제일까요? 상속 받을 때 문제가 있었을까요?
 
-But if we remove the proxy, then everything will work as expected.
+하지만 프락시를 제거하면, 모든 것이 예상한 대로 작동합니다.
 
-The problem is actually in the proxy, in the line `(*)`.
+모든 문제는 사실 프락시에 있습니다(`(*)`가 있는 줄).
 
-1. When we read `admin.name`, as `admin` object doesn't have such own property, the search goes to its prototype.
-2. The prototype is `userProxy`.
-3. When reading `name` property from the proxy, its `get` trap triggers and returns it from the original object as `target[prop]` in the line `(*)`.
+1. `admin.name`을 읽을 때, `admin` 객체가 해당 프로퍼티를 가지고 있지 않기 때문에, 그것의 프로토타입 객체를 참조합니다.
+2. 프로토타입 객체는 `userProxy`입니다.
+3. 프락시에서 `name` 프로퍼티를 읽을 때, `get` 트랩이 작동하고 `(*)`가 있는 줄에서 `target[prop]`을 통해 원본 객체의 프로퍼티 값을 반환합니다.
 
-    A call to `target[prop]`, when `prop` is a getter, runs its code in the context `this=target`. So the result is `this._name` from the original object `target`, that is: from `user`.
+    `prop`이 획득자일 때 `target[prop]`을 호출하면, `this = target`인 컨텍스트에서 코드가 실행됩니다. 따라서 그 결과는 원본 객체인 `target`, 즉 `user`에서의 `this._name`입니다.
 
-To fix such situations, we need `receiver`, the third argument of `get` trap. It keeps the correct `this` to be passed to a getter. In our case that's `admin`.
+이 상황을 해결하려면, `get` 트랩의 세번째 인자인 `receiver`가 필요합니다. 이것은 올바른 `this`를 획득자에게 전달하도록 합니다. 우리의 경우에서는 `admin`에서 말입니다.
 
-How to pass the context for a getter? For a regular function we could use `call/apply`, but that's a getter, it's not 'called', just accessed.
+어떻게 하면 획득자에게 컨텍스트를 전달할 수 있을까요? 일반적인 함수에서는 `call/appy`를 사용하여 호출하지만, 획득자는 '호출'되지 않습니다. '접근'될 뿐이죠.
 
-`Reflect.get` can do that. Everything will work right if we use it.
+하지만 `Reflect.get`은 할 수 있습니다. 이것을 사용하면 모든 것이 올바르게 작동할 것입니다.
 
-Here's the corrected variant:
+올바른 수정본:
 
 ```js run
 let user = {
@@ -767,9 +765,9 @@ alert(admin.name); // Admin
 */!*
 ```
 
-Now `receiver` that keeps a reference to the correct `this` (that is `admin`), is passed to the getter using `Reflect.get` in the line `(*)`.
+`receiver`는 `this`(즉, `admin`)을 올바르게 참조할 수 있도록 해줍니다. 이제 이 `receiver`는 `(*)`가 있는 줄에서 `Reflect.get`을 통해 획득자에 전달됩니다.
 
-We can rewrite the trap even shorter:
+또한 트랩을 저 간결하게 작성할 수 있습니다:
 
 ```js
 get(target, prop, receiver) {
@@ -777,26 +775,25 @@ get(target, prop, receiver) {
 }
 ```
 
+`Reflect` 호출은 트랩과 정확히 같은 방식의 이름을 가지고 같은 인자를 받습니다. 이들은 이러한 방식으로 특별히 고안되었습니다.
 
-`Reflect` calls are named exactly the same way as traps and accept the same arguments. They were specifically designed this way.
+즉, `return Reflect...`는 머리 쓸 일 없이 안전하게 작업을 전달하고 그것에 관련한 것들을 잊지 않도록 해줍니다.
 
-So, `return Reflect...` provides a safe no-brainer to forward the operation and make sure we don't forget anything related to that.
+## 프락시의 한계
 
-## Proxy limitations
+프락시는 낮은 수준에서 기존의 객체들의 행동은 변경하거나 수정하는 독특한 방법을 제공합니다. 하지만, 완벽하진 않습니다. 몇 가지 한계가 존재합니다.
 
-Proxies provide a unique way to alter or tweak the behavior of the existing objects at the lowest level. Still, it's not perfect. There are limitations.
+### 빌트인 객체: 내부 슬
 
-### Built-in objects: Internal slots
+`Map`, `Set`, `Date`, `Promise`와 같은 많은 빌트인 객체는 소위 '내부 슬롯'을 사용합니다.
 
-Many built-in objects, for example `Map`, `Set`, `Date`, `Promise` and others make use of so-called 'internal slots'.
+이것들은 프로퍼티와 비슷하지만 내부적이고 명세서에만 정의된 목적으로 예약되어있습니다. 예를 들어, `Map`은 아이템들을 내부 슬록인 `[[MapData]]`에 보관합니다. 빌트인 메소드는 `[[Get]]/[[Set]]` 내부 메소드를 통하지 않고 이것들에 바로 접근합니다. 따라서 `Proxy`는 그것들을 가로챌 수 없습니다.
 
-These are like properties, but reserved for internal, specification-only purposes. For instance, `Map` stores items in the internal slot `[[MapData]]`. Built-in methods access them directly, not via `[[Get]]/[[Set]]` internal methods. So `Proxy` can't intercept that.
+왜 신경쓰죠? 어쨌든 내부에 있잖아요!
 
-Why care? They're internal anyway!
+글쎼요, 문제가 생깁니다. 빌트인 객체가 프락시되면 빌트엔 메소드들은 실패하게 됩니다. 프락시가 이러한 내부 슬롯이 없기 때문이죠.
 
-Well, here's the issue. After a built-in object like that gets proxied, the proxy doesn't have these internal slots, so built-in methods will fail.
-
-For example:
+예를 들어:
 
 ```js run
 let map = new Map();
@@ -808,9 +805,9 @@ proxy.set('test', 1); // Error
 */!*
 ```
 
-Internally, a `Map` stores all data in its `[[MapData]]` internal slot. The proxy doesn't have such a slot. The [built-in method `Map.prototype.set`](https://tc39.es/ecma262/#sec-map.prototype.set) method tries to access the internal property `this.[[MapData]]`, but because `this=proxy`, can't find it in `proxy` and just fails.
+내부적으로, `Map`은 모든 데이터를 `[[MapData]]` 내부 슬롯에 보관합니다. 프락시는 이런 슬롯이 없습니다. [빌트인 메소드 `Map.prototype.set`](https://tc39.es/ecma262/#sec-map.prototype.set)는 내부 슬롯인 this.[[MapData]]에 접근하려 하지만, `this=proxy`이기 때문에 `proxy`에서 이것을 찾을 수 없어 실패하게 됩니다.
 
-Fortunately, there's a way to fix it:
+다행히도, 이것을 고칠 방법이 있습니다.
 
 ```js run
 let map = new Map();
@@ -828,21 +825,21 @@ proxy.set('test', 1);
 alert(proxy.get('test')); // 1 (works!)
 ```
 
-Now it works fine, because `get` trap binds function properties, such as `map.set`, to the target object (`map`) itself.
+이제 제대로 작동합니다. `get` 트랩이 `map.set` 같은 프로퍼티를 target 객체(`map`) 자체에 바인딩하기 때문이죠.
 
-Unlike the previous example, the value of `this` inside `proxy.set(...)` will be not `proxy`, but the original `map`. So when the internal implementation of `set` tries to access `this.[[MapData]]` internal slot, it succeeds.
+이전 예시와 달리, `proxy.set(...)` 내부의 `this`는 `proxy`가 아니라 원본 객체인 `map`입니다. 따라서 원본 구현인 `set`이 `this.[[MapData]]` 내부 슬롯에 접근을 시도하고, 성공합니다.
 
-```smart header="`Array` has no internal slots"
-A notable exception: built-in `Array` doesn't use internal slots. That's for historical reasons, as it appeared so long ago.
+```smart header="`배열`은 내부 슬롯이 없습니다."
+중요한 예외가 있습니다: `배열`은 내부슬롯을 사용하지 않습니다. 오래 전에 생겼다는 역사적인 이유 떄문입니다.
 
-So there's no such problem when proxying an array.
+따라서 배열에 프락시를 사용할 때는 그런 문제가 발생하지 않습니다.
 ```
 
-### Private fields
+### private 필드
 
-A similar thing happens with private class fields.
+비슷한 일이 클래스의 private 필드에서도 일어납니다.
 
-For example, `getName()` method accesses the private `#name` property and breaks after proxying:
+예를 들어, `getName()` 메소드는 private 프로퍼티인 `#name`에 접근하고, 만약 프락시로 감싸졌다면 중단이 발생합니다:
 
 ```js run
 class User {
@@ -862,11 +859,11 @@ alert(user.getName()); // Error
 */!*
 ```
 
-The reason is that private fields are implemented using internal slots. JavaScript does not use `[[Get]]/[[Set]]` when accessing them.
+그 이유는 private 필드는 내부 슬롯을 사용하여 구현되었기 때문입니다. 자바스크립트는 이것에 접근할 때 `[[Get]]/[[Set]]`을 사용하지 않습니다.
 
-In the call `getName()` the value of `this` is the proxied `user`, and it doesn't have the slot with private fields.
+`getName()`의 호출에서 `this`는 프락시로 감싸진 `user`이고, 그것은 private 필드가 있는 슬롯이 없습니다.
 
-Once again, the solution with binding the method makes it work:
+또 다시, 해결책은 메소드를 바인딩하는 것입니다. 
 
 ```js run
 class User {
@@ -890,12 +887,13 @@ alert(user.getName()); // Guest
 ```
 
 That said, the solution has drawbacks, as explained previously: it exposes the original object to the method, potentially allowing it to be passed further and breaking other proxied functionality.
+즉, 이 해결책은 이전에 얘기한 것과 같은 단점이 있습니다: 이것은 원본 객체를 메소드에 노출시켜, 헤당 객체가 추가적으로 전달되거나 다른 프락시의 기능을 깨뜨릴 수 있습니다.
 
-### Proxy != target
+### 프락시 != target
 
-The proxy and the original object are different objects. That's natural, right?
+프락시와 원본 객체는 다른 객체입니다. 당연하겠죠?
 
-So if we use the original object as a key, and then proxy it, then the proxy can't be found:
+따라서 원본 객체를 key로 사용하고, 그것에 프락시를 사용하면, 프락시는 발견되지 않습니다.
 
 ```js run
 let allUsers = new Set();
@@ -918,14 +916,14 @@ alert(allUsers.has(user)); // false
 */!*
 ```
 
-As we can see, after proxying we can't find `user` in the set `allUsers`, because the proxy is a different object.
+보시다시피, 프락시를 사용한 후에는 `allUsers` 셋에서 `user`를 찾을 수 없습니다. 프락시는 다른 객체이기 때문입니다.
 
-```warn header="Proxies can't intercept a strict equality test `===`"
-Proxies can intercept many operators, such as `new` (with `construct`), `in` (with `has`), `delete` (with `deleteProperty`) and so on.
+```warn header="프락시는 업격한 동등성 검사 `===`를 가로챌 수 없습니다"
+프락시는 `new`(`construct`로), `in`(`has`로), `delete`(`deleteProperty`로) 등등의 많은 연산자를 가로챌 수 있습니다.
 
-But there's no way to intercept a strict equality test for objects. An object is strictly equal to itself only, and no other value.
+하지만 객체에 대한 엄격한 동등성 검사를 라고채는 방법은 존재하지 않습니다. 객체는 자신과만 완벽하게 동일하기 때문입니다.
 
-So all operations and built-in classes that compare objects for equality will differentiate between the object and the proxy. No transparent replacement here.
+따라서 객체에 대해 동등성 검사를 하는 모든 작업과 빌트인 클래스는 객체와 프락시를 구분할 수 있습니다. 어떤 투명한 대안도 없습니다.
 ```
 
 ## Revocable proxies
